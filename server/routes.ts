@@ -14,7 +14,13 @@ import bcrypt from 'bcrypt';
 // Simple JWT implementation for admin authentication
 import jwt from 'jsonwebtoken';
 
+// Use environment variable for JWT secret in production, fallback to a default in development
 const JWT_SECRET = process.env.JWT_SECRET || 'nainaland-secret-key';
+
+// Log warning if using default JWT secret in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: Using default JWT_SECRET in production environment. Set JWT_SECRET environment variable for better security.');
+}
 
 function generateToken(userId: number): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });

@@ -49,7 +49,8 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-export const getAuthHeader = () => {
+// Type-safe auth header function
+export const getAuthHeader = (): Record<string, string> => {
   const { token } = useAuthStore.getState();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };

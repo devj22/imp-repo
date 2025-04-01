@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAuthHeader } from "@/lib/auth";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,14 +8,46 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper function to ensure URLs are properly formatted with the API prefix
+function getApiUrl(url: string): string {
+  // If URL already starts with http(s), use it as is
+  if (url.startsWith('http')) {
+    return url;
+  }
+  
+  // If URL already has /api prefix, use it as is
+  if (url.startsWith('/api')) {
+    return url;
+  }
+  
+  // Otherwise, add /api prefix
+  return `/api${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const apiUrl = getApiUrl(url);
+  
+  // Create a Headers object for type safety
+  const headers = new Headers();
+  
+  // Add content type if data is provided
+  if (data) {
+    headers.append("Content-Type", "application/json");
+  }
+  
+  // Add auth header if token exists
+  const authHeaders = getAuthHeader();
+  Object.entries(authHeaders).forEach(([key, value]) => {
+    headers.append(key, value);
+  });
+  
+  const res = await fetch(apiUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +62,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = queryKey[0] as string;
+    const apiUrl = getApiUrl(url);
+    
+    // Get auth headers and explicitly cast as HeadersInit
+    const headers: HeadersInit = getAuthHeader();
+    
+    const res = await fetch(apiUrl, {
       credentials: "include",
+      headers
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
